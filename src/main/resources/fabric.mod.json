@@ -9,7 +9,6 @@
 	],
 	"contact": {},
 	"license": "CC0-1.0",
-	"icon": null,
 	"environment": "client",
 	"entrypoints": {
 		"main": [
