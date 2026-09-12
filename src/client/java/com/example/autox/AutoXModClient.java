@@ -2,24 +2,15 @@ package com.example.autox;
 
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.ingame.MerchantScreen;
-import net.minecraft.client.input.KeyInput;
-import net.minecraft.client.option.KeyBinding;
-import net.minecraft.client.util.InputUtil;
 import org.lwjgl.glfw.GLFW;
+import org.lwjgl.glfw.GLFWKeyCallback;
 
 public class AutoXModClient implements ClientModInitializer {
 
 	// Doi thanh true/false de bat/tat tinh nang nhanh khi test.
 	private static boolean enabled = true;
-
-	// Ke tu Minecraft 1.21.11, moi su kien ban phim duoc goi thanh mot
-	// "KeyInput" (record gom keyCode, scanCode, modifiers) thay vi 3 tham
-	// so rieng le nhu truoc. Ta tao san 1 KeyInput dai dien cho phim X.
-	private static final KeyInput KEY_INPUT_X = new KeyInput(GLFW.GLFW_KEY_X, 0, 0);
-
-	// Ma phim vat ly (InputUtil.Key) tuong ung, dung cho KeyBinding.setKeyPressed.
-	private static final InputUtil.Key KEY_X = InputUtil.fromKeyCode(KEY_INPUT_X);
 
 	@Override
 	public void onInitializeClient() {
@@ -31,27 +22,46 @@ public class AutoXModClient implements ClientModInitializer {
 				return;
 			}
 
-			// Doi mot nhip de dam bao GUI (va mod khac dang lang nghe man hinh nay)
-			// da khoi tao hoan toan truoc khi gia lap phim.
-			client.execute(() -> {
-
-				// Cach 1: cap nhat trang thai KeyBinding toan cuc, y het khi GLFW bao
-				// "phim X vua duoc nhan/tha". Cach nay hoat dong voi cac mod dung
-				// KeyBinding.wasPressed() / isPressed() (kiem tra moi tick) - day la
-				// cach pho bien nhat cho cac phim tat QoL trong game.
-				KeyBinding.setKeyPressed(KEY_X, true);
-
-				// Cach 2: goi truc tiep keyPressed cua chinh man hinh dang mo.
-				// Hoat dong voi cac mod bat phim ngay trong Screen#keyPressed
-				// (thuong qua Mixin vao HandledScreen/MerchantScreen).
-				screen.keyPressed(KEY_INPUT_X);
-
-				// Tha phim ra ngay sau do, mo phong dung mot lan bam-tha hoan chinh.
-				KeyBinding.setKeyPressed(KEY_X, false);
-
-				AutoXMod.LOGGER.info("[AutoX] Da gia lap bam va tha phim X khi mo GUI giao dich.");
-			});
+			// Doi mot nhip de dam bao GUI da khoi tao hoan toan truoc khi gia lap phim.
+			client.execute(() -> simulateRealKeyPressX(client));
 		});
+	}
+
+	/**
+	 * Gia lap DUNG MOT SU KIEN PHIM VAT LY X bang cach goi thang vao
+	 * callback GLFW ma chinh Minecraft da dang ky voi cua so game.
+	 *
+	 * Day la cach gia lap manh nhat co the co: no khong di qua bat ky
+	 * lop API nao cua rieng Minecraft (KeyBinding, Screen#keyPressed...)
+	 * ma tai tao chinh xac con duong GLFW dung moi khi ban bam mot phim
+	 * that tren ban phim vat ly. Vi vay no hoat dong voi MOI mod dang
+	 * lang nghe phim - bat ke mod do bat phim kieu gi (KeyBinding chuan,
+	 * Mixin rieng, hay tu dang ky callback) - vi tat ca deu phai di qua
+	 * dung callback nay.
+	 */
+	private static void simulateRealKeyPressX(MinecraftClient client) {
+		long windowHandle = client.getWindow().getHandle();
+
+		// "Muon" lay callback ban phim hien tai: dang ky tam mot callback
+		// rong, GLFW se tra ve callback CU (chinh la cai Minecraft/cac mod
+		// khac da dang ky, co the la mot chuoi callback long nhau).
+		GLFWKeyCallback previous = GLFW.glfwSetKeyCallback(windowHandle, null);
+
+		if (previous == null) {
+			AutoXMod.LOGGER.warn("[AutoX] Khong tim thay key callback hien tai, huy gia lap lan nay.");
+			return;
+		}
+
+		// Tra lai callback that ngay lap tuc de khong lam mat input that cua nguoi choi.
+		GLFW.glfwSetKeyCallback(windowHandle, previous);
+
+		int scancode = GLFW.glfwGetKeyScancode(GLFW.GLFW_KEY_X);
+
+		// Goi callback y het nhu khi GLFW tu bao "phim X vua nhan/tha" tu phan cung that.
+		previous.invoke(windowHandle, GLFW.GLFW_KEY_X, scancode, GLFW.GLFW_PRESS, 0);
+		previous.invoke(windowHandle, GLFW.GLFW_KEY_X, scancode, GLFW.GLFW_RELEASE, 0);
+
+		AutoXMod.LOGGER.info("[AutoX] Da gia lap su kien GLFW that cho phim X (nhan + tha).");
 	}
 
 	public static void setEnabled(boolean value) {
