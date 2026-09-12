@@ -1,0 +1,29 @@
+{
+	"schemaVersion": 1,
+	"id": "autox",
+	"version": "${version}",
+	"name": "Auto X On Trade",
+	"description": "Tu dong bam phim X ngay khi mo GUI giao dich cua dan lang.",
+	"authors": [
+		"Ban"
+	],
+	"contact": {},
+	"license": "CC0-1.0",
+	"icon": null,
+	"environment": "client",
+	"entrypoints": {
+		"main": [
+			"com.example.autox.AutoXMod"
+		],
+		"client": [
+			"com.example.autox.AutoXModClient"
+		]
+	},
+	"mixins": [],
+	"depends": {
+		"fabricloader": ">=0.16.10",
+		"fabric-api": "*",
+		"minecraft": "1.21.11",
+		"java": ">=21"
+	}
+}
