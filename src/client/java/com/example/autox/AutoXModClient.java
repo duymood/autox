@@ -1,64 +1,65 @@
 package com.example.autox;
 
 import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.minecraft.client.gui.screen.ingame.MerchantScreen;
 import net.minecraft.client.input.KeyInput;
-import net.minecraft.client.option.KeyBinding;
-import net.minecraft.client.util.InputUtil;
 import org.lwjgl.glfw.GLFW;
 
 public class AutoXModClient implements ClientModInitializer {
 
-	// Doi thanh true/false de bat/tat tinh nang nhanh khi test.
-	private static boolean enabled = true;
+    // Doi thanh true/false de bat/tat tinh nang.
+    private static boolean enabled = true;
 
-	// Ke tu Minecraft 1.21.11, moi su kien ban phim duoc goi thanh mot
-	// "KeyInput" (record gom keyCode, scanCode, modifiers) thay vi 3 tham
-	// so rieng le nhu truoc. Ta tao san 1 KeyInput dai dien cho phim X.
-	private static final KeyInput KEY_INPUT_X = new KeyInput(GLFW.GLFW_KEY_X, 0, 0);
+    // Phim X theo API ban phim cua Minecraft 1.21.11.
+    private static final KeyInput KEY_INPUT_X = new KeyInput(GLFW.GLFW_KEY_X, 0, 0);
 
-	// Ma phim vat ly (InputUtil.Key) tuong ung, dung cho KeyBinding.setKeyPressed.
-	private static final InputUtil.Key KEY_X = InputUtil.fromKeyCode(KEY_INPUT_X);
+    // Cho GUI khoi tao xong. Lenh bam X se duoc thuc hien o tick ke tiep (~50ms).
+    private static boolean pendingAutoX = false;
+    private static boolean alreadyPressed = false;
 
-	@Override
-	public void onInitializeClient() {
-		// Lang nghe su kien: bat cu man hinh (Screen) nao duoc mo va da khoi tao xong
-		ScreenEvents.AFTER_INIT.register((client, screen, scaledWidth, scaledHeight) -> {
+    @Override
+    public void onInitializeClient() {
+        // Khi GUI dan lang mo xong, chi dat co. Khong bam X ngay trong AFTER_INIT.
+        ScreenEvents.AFTER_INIT.register((client, screen, scaledWidth, scaledHeight) -> {
+            if (!enabled || !(screen instanceof MerchantScreen)) {
+                return;
+            }
 
-			// Chi xu ly khi man hinh la GUI giao dich cua dan lang (Villager Trade GUI)
-			if (!enabled || !(screen instanceof MerchantScreen)) {
-				return;
-			}
+            alreadyPressed = false;
+            pendingAutoX = true;
+        });
 
-			// Doi mot nhip de dam bao GUI (va mod khac dang lang nghe man hinh nay)
-			// da khoi tao hoan toan truoc khi gia lap phim.
-			client.execute(() -> {
+        // Tick ke tiep sau khi GUI mo: bam X mot lan.
+        ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            if (!enabled || !pendingAutoX || alreadyPressed) {
+                return;
+            }
 
-				// Cach 1: cap nhat trang thai KeyBinding toan cuc, y het khi GLFW bao
-				// "phim X vua duoc nhan/tha". Cach nay hoat dong voi cac mod dung
-				// KeyBinding.wasPressed() / isPressed() (kiem tra moi tick) - day la
-				// cach pho bien nhat cho cac phim tat QoL trong game.
-				KeyBinding.setKeyPressed(KEY_X, true);
+            if (!(client.currentScreen instanceof MerchantScreen)) {
+                // GUI da dong truoc khi toi tick xu ly -> huy lenh.
+                pendingAutoX = false;
+                return;
+            }
 
-				// Cach 2: goi truc tiep keyPressed cua chinh man hinh dang mo.
-				// Hoat dong voi cac mod bat phim ngay trong Screen#keyPressed
-				// (thuong qua Mixin vao HandledScreen/MerchantScreen).
-				screen.keyPressed(KEY_INPUT_X);
+            pendingAutoX = false;
+            alreadyPressed = true;
 
-				// Tha phim ra ngay sau do, mo phong dung mot lan bam-tha hoan chinh.
-				KeyBinding.setKeyPressed(KEY_X, false);
+            client.currentScreen.keyPressed(KEY_INPUT_X);
+            AutoXMod.LOGGER.info("[AutoX] Da bam X khi mo GUI giao dich.");
+        });
+    }
 
-				AutoXMod.LOGGER.info("[AutoX] Da gia lap bam va tha phim X khi mo GUI giao dich.");
-			});
-		});
-	}
+    public static void setEnabled(boolean value) {
+        enabled = value;
+        if (!value) {
+            pendingAutoX = false;
+            alreadyPressed = false;
+        }
+    }
 
-	public static void setEnabled(boolean value) {
-		enabled = value;
-	}
-
-	public static boolean isEnabled() {
-		return enabled;
-	}
+    public static boolean isEnabled() {
+        return enabled;
+    }
 }
