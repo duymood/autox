@@ -1,6 +1,7 @@
 package com.example.autox;
 
 import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.ingame.MerchantScreen;
@@ -12,6 +13,15 @@ public class AutoXModClient implements ClientModInitializer {
 	// Doi thanh true/false de bat/tat tinh nang nhanh khi test.
 	private static boolean enabled = true;
 
+	// So tick (1 tick = 1/20 giay) can cho de cac mod khac (vd Inventory
+	// Profiles Next) kip khoi tao xong trang thai cua GUI giao dich truoc
+	// khi ta gia lap phim X. Neu van thay "luc duoc luc khong", thu tang
+	// so nay len (vd 10, 15...).
+	private static final int DELAY_TICKS = 2;
+
+	// Bo dem: con bao nhieu tick nua thi gia lap phim. 0 = khong co gi cho.
+	private static int pendingTicks = 0;
+
 	@Override
 	public void onInitializeClient() {
 		// Lang nghe su kien: bat cu man hinh (Screen) nao duoc mo va da khoi tao xong
@@ -22,8 +32,28 @@ public class AutoXModClient implements ClientModInitializer {
 				return;
 			}
 
-			// Doi mot nhip de dam bao GUI da khoi tao hoan toan truoc khi gia lap phim.
-			client.execute(() -> simulateRealKeyPressX(client));
+			// Thay vi gia lap phim NGAY LAP TUC (de bi tranh chap thoi gian
+			// voi cac mod khac dang cung khoi tao theo GUI nay), ta chi dat
+			// bo dem va de vong lap tick ben duoi xu ly sau vai tick.
+			pendingTicks = DELAY_TICKS;
+		});
+
+		// Vong lap chay moi tick cua client (20 lan/giay). Day la noi thuc
+		// su gia lap phim, sau khi da doi du so tick can thiet.
+		ClientTickEvents.END_CLIENT_TICK.register(client -> {
+			if (pendingTicks <= 0) {
+				return;
+			}
+
+			pendingTicks--;
+
+			if (pendingTicks == 0) {
+				// Chi gia lap neu GUI giao dich VAN dang mo luc dem het gio
+				// (phong truong hop nguoi choi da dong GUI truoc do).
+				if (client.currentScreen instanceof MerchantScreen) {
+					simulateRealKeyPressX(client);
+				}
+			}
 		});
 	}
 
@@ -35,9 +65,7 @@ public class AutoXModClient implements ClientModInitializer {
 	 * lop API nao cua rieng Minecraft (KeyBinding, Screen#keyPressed...)
 	 * ma tai tao chinh xac con duong GLFW dung moi khi ban bam mot phim
 	 * that tren ban phim vat ly. Vi vay no hoat dong voi MOI mod dang
-	 * lang nghe phim - bat ke mod do bat phim kieu gi (KeyBinding chuan,
-	 * Mixin rieng, hay tu dang ky callback) - vi tat ca deu phai di qua
-	 * dung callback nay.
+	 * lang nghe phim - bat ke mod do bat phim kieu gi.
 	 */
 	private static void simulateRealKeyPressX(MinecraftClient client) {
 		long windowHandle = client.getWindow().getHandle();
@@ -61,7 +89,7 @@ public class AutoXModClient implements ClientModInitializer {
 		previous.invoke(windowHandle, GLFW.GLFW_KEY_X, scancode, GLFW.GLFW_PRESS, 0);
 		previous.invoke(windowHandle, GLFW.GLFW_KEY_X, scancode, GLFW.GLFW_RELEASE, 0);
 
-		AutoXMod.LOGGER.info("[AutoX] Da gia lap su kien GLFW that cho phim X (nhan + tha).");
+		AutoXMod.LOGGER.info("[AutoX] Da gia lap su kien GLFW that cho phim X (nhan + tha) sau " + DELAY_TICKS + " tick.");
 	}
 
 	public static void setEnabled(boolean value) {
