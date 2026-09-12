@@ -3,6 +3,7 @@ package com.example.autox;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.minecraft.client.gui.screen.ingame.MerchantScreen;
+import net.minecraft.client.input.KeyInput;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
 import org.lwjgl.glfw.GLFW;
@@ -12,8 +13,13 @@ public class AutoXModClient implements ClientModInitializer {
 	// Doi thanh true/false de bat/tat tinh nang nhanh khi test.
 	private static boolean enabled = true;
 
-	// Ma phim vat ly cho X, dung chung cho ca 2 cach gia lap ben duoi.
-	private static final InputUtil.Key KEY_X = InputUtil.fromKeyCode(GLFW.GLFW_KEY_X, 0);
+	// Ke tu Minecraft 1.21.11, moi su kien ban phim duoc goi thanh mot
+	// "KeyInput" (record gom keyCode, scanCode, modifiers) thay vi 3 tham
+	// so rieng le nhu truoc. Ta tao san 1 KeyInput dai dien cho phim X.
+	private static final KeyInput KEY_INPUT_X = new KeyInput(GLFW.GLFW_KEY_X, 0, 0);
+
+	// Ma phim vat ly (InputUtil.Key) tuong ung, dung cho KeyBinding.setKeyPressed.
+	private static final InputUtil.Key KEY_X = InputUtil.fromKeyCode(KEY_INPUT_X);
 
 	@Override
 	public void onInitializeClient() {
@@ -38,7 +44,7 @@ public class AutoXModClient implements ClientModInitializer {
 				// Cach 2: goi truc tiep keyPressed cua chinh man hinh dang mo.
 				// Hoat dong voi cac mod bat phim ngay trong Screen#keyPressed
 				// (thuong qua Mixin vao HandledScreen/MerchantScreen).
-				screen.keyPressed(GLFW.GLFW_KEY_X, 0, 0);
+				screen.keyPressed(KEY_INPUT_X);
 
 				// Tha phim ra ngay sau do, mo phong dung mot lan bam-tha hoan chinh.
 				KeyBinding.setKeyPressed(KEY_X, false);
@@ -56,4 +62,3 @@ public class AutoXModClient implements ClientModInitializer {
 		return enabled;
 	}
 }
-
