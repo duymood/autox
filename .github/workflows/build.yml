@@ -1,0 +1,39 @@
+name: Build Fabric Mod
+
+# Tu dong chay moi khi ban push code len nhanh main,
+# hoac ban co the bam nut "Run workflow" thu cong trong tab Actions.
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Cai dat JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      # Repo nay khong kem san "Gradle Wrapper" (file nhi phan gradle-wrapper.jar),
+      # nen dung action nay de GitHub tu cai dat Gradle thay vi goi ./gradlew.
+      - name: Cai dat Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10'
+
+      - name: Build mod
+        run: gradle build --stacktrace
+
+      - name: Upload file .jar da build
+        uses: actions/upload-artifact@v4
+        with:
+          name: auto-x-on-trade-jar
+          path: build/libs/*.jar
+          
